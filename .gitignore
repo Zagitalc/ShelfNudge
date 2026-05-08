@@ -1,2 +1,4 @@
 .claude/
 uploads/
+node_modules/
+client/dist/
