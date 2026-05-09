@@ -51,6 +51,12 @@ npm run dev --prefix client
 
 Open the Vite URL, usually `http://localhost:5173`.
 
+Run the automated tests:
+
+```bash
+npm test
+```
+
 ## API Endpoints
 
 The Express server runs on port `4000`.
@@ -77,14 +83,13 @@ The backend loads `server/data/Sample_Data.csv` at startup, converts price field
 - The CSV is loaded only at server startup.
 - Product rows are served from the latest snapshot rather than paginated historical data.
 - There is no authentication or role-based access.
-- There is no automated test suite yet.
+- Test coverage is focused on CSV analytics, API responses, API client helpers, formatting helpers, and core React async rendering/filtering flows.
 - The app is optimised for the supplied CSV shape.
 
 ## Future Improvements
 
 - PostgreSQL/database persistence
 - Pagination
-- Testing
 - Caching
 - Scheduled data ingestion
 - Advanced filtering

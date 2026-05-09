@@ -1,10 +1,12 @@
 import cors from 'cors';
 import express from 'express';
+import { pathToFileURL } from 'node:url';
 import { filterProducts, getPromotions, getSummary, getTrends } from './analytics.js';
 import { metadata } from './dataStore.js';
 
-const app = express();
 const PORT = process.env.PORT || 4000;
+
+export const app = express();
 
 app.use(cors());
 
@@ -98,32 +100,40 @@ app.get('/api/promotions', (req, res) => {
   });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Shelf Nudge API running on http://localhost:${PORT}`);
-  console.log(`Loaded ${metadata.loadedRows} CSV rows. Latest snapshot: ${metadata.latestDate}`);
-});
+export const startServer = (port = PORT) => {
+  const server = app.listen(port, () => {
+    console.log(`Shelf Nudge API running on http://localhost:${port}`);
+    console.log(`Loaded ${metadata.loadedRows} CSV rows. Latest snapshot: ${metadata.latestDate}`);
+  });
 
-server.on('error', async (error) => {
-  if (error.code !== 'EADDRINUSE') {
-    console.error(error);
-    process.exit(1);
-  }
-
-  try {
-    const response = await fetch(`http://localhost:${PORT}/api/health`);
-    const health = await response.json();
-
-    if (health.ok && health.loadedRows) {
-      console.log(`Shelf Nudge API is already running on http://localhost:${PORT}`);
-      console.log('Reusing the existing backend process for this npm start session.');
-      setInterval(() => {}, 60 * 60 * 1000);
-      return;
+  server.on('error', async (error) => {
+    if (error.code !== 'EADDRINUSE') {
+      console.error(error);
+      process.exit(1);
     }
-  } catch {
-    // Fall through to the clearer error below.
-  }
 
-  console.error(`Port ${PORT} is already in use by another process.`);
-  console.error(`Stop that process or start this server with a different PORT value.`);
-  process.exit(1);
-});
+    try {
+      const response = await fetch(`http://localhost:${port}/api/health`);
+      const health = await response.json();
+
+      if (health.ok && health.loadedRows) {
+        console.log(`Shelf Nudge API is already running on http://localhost:${port}`);
+        console.log('Reusing the existing backend process for this npm start session.');
+        setInterval(() => {}, 60 * 60 * 1000);
+        return;
+      }
+    } catch {
+      // Fall through to the clearer error below.
+    }
+
+    console.error(`Port ${port} is already in use by another process.`);
+    console.error(`Stop that process or start this server with a different PORT value.`);
+    process.exit(1);
+  });
+
+  return server;
+};
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  startServer();
+}

@@ -21,7 +21,7 @@ import './styles.css';
 
 const COLORS = ['#3445A4', '#5060C9', '#7A89EA', '#111111', '#8EA0FF', '#B8C4FF'];
 
-function useDashboardData() {
+export function useDashboardData() {
   const [state, setState] = useState({
     loading: true,
     error: '',
@@ -51,7 +51,7 @@ function useDashboardData() {
   return state;
 }
 
-function Header({ latestDate }) {
+export function Header({ latestDate }) {
   return (
     <header className="app-header">
       <div>
@@ -69,7 +69,7 @@ function Header({ latestDate }) {
   );
 }
 
-function Hero() {
+export function Hero() {
   return (
     <section className="hero">
       <div>
@@ -80,7 +80,7 @@ function Hero() {
   );
 }
 
-function KpiCards({ summary }) {
+export function KpiCards({ summary }) {
   const cards = [
     ['Products Tracked', integer(summary.totalProducts)],
     ['Retailers Monitored', integer(summary.totalRetailers)],
@@ -102,7 +102,7 @@ function KpiCards({ summary }) {
   );
 }
 
-function PricingTrendsChart({ trends }) {
+export function PricingTrendsChart({ trends }) {
   return (
     <article className="dashboard-card chart-card chart-card-wide">
       <div className="card-heading">
@@ -129,7 +129,7 @@ function PricingTrendsChart({ trends }) {
   );
 }
 
-function RetailerComparisonChart({ products }) {
+export function RetailerComparisonChart({ products }) {
   const data = useMemo(() => {
     const grouped = products.reduce((map, product) => {
       map[product.retailer] ||= { retailer: product.retailer, shelfTotal: 0, count: 0 };
@@ -169,7 +169,7 @@ function RetailerComparisonChart({ products }) {
   );
 }
 
-function PromotionInsightsChart({ promotions }) {
+export function PromotionInsightsChart({ promotions }) {
   const data = promotions.byCategory.slice(0, 6);
 
   return (
@@ -197,7 +197,7 @@ function PromotionInsightsChart({ promotions }) {
   );
 }
 
-function ProductExplorer({ initialProducts, metadata }) {
+export function ProductExplorer({ initialProducts, metadata }) {
   const [products, setProducts] = useState(initialProducts);
   const [filters, setFilters] = useState({
     retailer: 'All',
@@ -336,7 +336,7 @@ function ProductExplorer({ initialProducts, metadata }) {
   );
 }
 
-function App() {
+export function App() {
   const dashboard = useDashboardData();
   const [initialProducts, setInitialProducts] = useState([]);
 
@@ -369,4 +369,8 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+const root = document.getElementById('root');
+
+if (root) {
+  createRoot(root).render(<App />);
+}
