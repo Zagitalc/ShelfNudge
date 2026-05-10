@@ -80,10 +80,12 @@ The backend loads `server/data/Sample_Data.csv` at startup, converts price field
 
 Frontend state is responsible for user-facing loading, error, and empty states. A successful API response with an empty array, such as a filter combination with no matching products, is treated as a valid empty result and renders guidance to change filters. Request failures, server errors, network errors, and invalid responses render a clear error message instead.
 
+The Product Explorer uses frontend-side pagination to render 50 products per page while preserving the current API contract. The backend still returns all matched products; for larger production datasets, pagination, sorting, and filtering should move server-side.
+
 ## Limitations
 
 - The CSV is loaded only at server startup.
-- Product rows are served from the latest snapshot rather than paginated historical data.
+- Product rows are served from the latest snapshot, with frontend-side pagination rather than server-side paging.
 - There is no authentication or role-based access.
 - Test coverage is focused on CSV analytics, API responses, API client helpers, formatting helpers, React async rendering/filtering flows, and frontend empty/error states.
 - The app is optimised for the supplied CSV shape.
@@ -91,7 +93,7 @@ Frontend state is responsible for user-facing loading, error, and empty states. 
 ## Future Improvements
 
 - PostgreSQL/database persistence
-- Pagination
+- Server-side pagination, sorting, and filtering
 - Caching
 - Scheduled data ingestion
 - Advanced filtering

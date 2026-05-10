@@ -258,6 +258,8 @@ export function ProductExplorer({ initialProducts, metadata }) {
   const [sort, setSort] = useState({ key: 'title', direction: 'asc' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
 
   useEffect(() => {
     let cancelled = false;
@@ -300,12 +302,23 @@ export function ProductExplorer({ initialProducts, metadata }) {
       return 0;
     });
   }, [products, sort]);
+  const totalPages = Math.max(1, Math.ceil(sortedProducts.length / pageSize));
+  const pageStart = (currentPage - 1) * pageSize;
+  const paginatedProducts = sortedProducts.slice(pageStart, currentPage * pageSize);
+  const visibleStart = sortedProducts.length ? pageStart + 1 : 0;
+  const visibleEnd = Math.min(currentPage * pageSize, sortedProducts.length);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const setFilter = (key, value) => {
+    setCurrentPage(1);
     setFilters((current) => ({ ...current, [key]: value }));
   };
 
   const toggleSort = (key) => {
+    setCurrentPage(1);
     setSort((current) => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
@@ -320,6 +333,14 @@ export function ProductExplorer({ initialProducts, metadata }) {
       </button>
     </th>
   );
+
+  const goToPreviousPage = () => {
+    setCurrentPage((page) => Math.max(1, page - 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((page) => Math.min(totalPages, page + 1));
+  };
 
   return (
     <article className="dashboard-card product-card">
@@ -383,11 +404,11 @@ export function ProductExplorer({ initialProducts, metadata }) {
               </tr>
             </thead>
             <tbody>
-              {sortedProducts.map((product, index) => (
-                <tr key={`${product.retailer}-${product.ean}-${index}`}>
+              {paginatedProducts.map((product, index) => (
+                <tr key={`${product.retailer}-${product.ean}-${pageStart + index}`}>
                   <td>
                     <div className="product-title">
-                      {product.image ? <img src={product.image} alt="" /> : <span className="image-fallback" />}
+                      {product.image ? <img src={product.image} alt="" loading="lazy" /> : <span className="image-fallback" />}
                       <span>{product.title}</span>
                     </div>
                   </td>
@@ -409,6 +430,16 @@ export function ProductExplorer({ initialProducts, metadata }) {
           </table>
         )}
       </div>
+      {!loading && !error && sortedProducts.length > 0 ? (
+        <div className="pagination-bar">
+          <span>Showing {integer(visibleStart)}-{integer(visibleEnd)} of {integer(sortedProducts.length)} products</span>
+          <div className="pagination-controls">
+            <button type="button" onClick={goToPreviousPage} disabled={currentPage === 1}>Previous</button>
+            <strong>Page {integer(currentPage)} of {integer(totalPages)}</strong>
+            <button type="button" onClick={goToNextPage} disabled={currentPage === totalPages}>Next</button>
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 }

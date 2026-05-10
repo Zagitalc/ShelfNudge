@@ -98,6 +98,23 @@ const products = [
   },
 ];
 
+const makeProducts = (count) => Array.from({ length: count }, (_, index) => {
+  const n = index + 1;
+  return {
+    retailer: n % 2 ? 'Sainsburys' : 'Tesco',
+    ean: `EAN${String(n).padStart(3, '0')}`,
+    category: n % 2 ? 'Black Tea' : 'Green Tea',
+    brand: `Brand ${String(n).padStart(3, '0')}`,
+    title: `Product ${String(n).padStart(3, '0')}`,
+    image: '',
+    onPromotion: false,
+    promotionDescription: '',
+    basePrice: n,
+    shelfPrice: n,
+    promotedPrice: null,
+  };
+});
+
 describe('App', () => {
   afterEach(() => {
     cleanup();
@@ -207,6 +224,8 @@ describe('ProductExplorer', () => {
     expect(screen.queryByText('Unable to load product data.')).not.toBeInTheDocument();
     expect(screen.queryByText('Unable to load dashboard data.')).not.toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
   });
 
   it('shows a product error state and clears rows when product loading fails', async () => {
@@ -229,6 +248,73 @@ describe('ProductExplorer', () => {
     expect(screen.getByText('Unable to load product data.')).toBeInTheDocument();
     expect(screen.queryByText('Yorkshire Tea 160 Tea Bags 500g')).not.toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('renders only the first 50 products on page 1', () => {
+    api.getProducts.mockResolvedValue({ data: makeProducts(55) });
+
+    render(<ProductExplorer initialProducts={makeProducts(55)} metadata={metadata} />);
+
+    expect(screen.getByText('Product 001')).toBeInTheDocument();
+    expect(screen.getByText('Product 050')).toBeInTheDocument();
+    expect(screen.queryByText('Product 051')).not.toBeInTheDocument();
+    expect(screen.getByText('Showing 1-50 of 55 products')).toBeInTheDocument();
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
+  });
+
+  it('moves between product pages with next and previous controls', () => {
+    api.getProducts.mockResolvedValue({ data: makeProducts(55) });
+
+    render(<ProductExplorer initialProducts={makeProducts(55)} metadata={metadata} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByText('Product 051')).toBeInTheDocument();
+    expect(screen.queryByText('Product 001')).not.toBeInTheDocument();
+    expect(screen.getByText('Showing 51-55 of 55 products')).toBeInTheDocument();
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+
+    expect(screen.getByText('Product 001')).toBeInTheDocument();
+    expect(screen.queryByText('Product 051')).not.toBeInTheDocument();
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
+  });
+
+  it('resets pagination to page 1 when filters change', async () => {
+    vi.useFakeTimers();
+    api.getProducts.mockResolvedValue({ data: makeProducts(60) });
+
+    render(<ProductExplorer initialProducts={makeProducts(60)} metadata={metadata} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('Search product, brand, category or EAN'), {
+      target: { value: 'Product' },
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(180);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
+    expect(screen.getByText('Showing 1-50 of 60 products')).toBeInTheDocument();
+  });
+
+  it('resets pagination to page 1 when sorting changes', () => {
+    api.getProducts.mockResolvedValue({ data: makeProducts(60) });
+
+    render(<ProductExplorer initialProducts={makeProducts(60)} metadata={metadata} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Brand/ }));
+
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
+    expect(screen.getByText('Showing 1-50 of 60 products')).toBeInTheDocument();
   });
 });
 
