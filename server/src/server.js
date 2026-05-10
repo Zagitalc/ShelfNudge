@@ -1,16 +1,22 @@
 import cors from 'cors';
 import express from 'express';
-import { pathToFileURL } from 'node:url';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { filterProducts, getPromotions, getSummary, getTrends } from './analytics.js';
 import { metadata } from './dataStore.js';
 
 const PORT = process.env.PORT || 4000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const clientDistPath = path.resolve(__dirname, '../../client/dist');
+const clientIndexPath = path.join(clientDistPath, 'index.html');
 
 export const app = express();
 
 app.use(cors());
 
-app.get('/', (req, res) => {
+const sendApiIndex = (req, res) => {
   res.type('html').send(`
     <!doctype html>
     <html lang="en">
@@ -66,7 +72,9 @@ app.get('/', (req, res) => {
       </body>
     </html>
   `);
-});
+};
+
+app.get('/api', sendApiIndex);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, ...metadata });
@@ -98,6 +106,21 @@ app.get('/api/promotions', (req, res) => {
     data: getPromotions(),
     metadata,
   });
+});
+
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'API route not found' });
+});
+
+app.use(express.static(clientDistPath));
+
+app.get('*', (req, res) => {
+  if (fs.existsSync(clientIndexPath)) {
+    res.sendFile(clientIndexPath);
+    return;
+  }
+
+  sendApiIndex(req, res);
 });
 
 export const startServer = (port = PORT) => {

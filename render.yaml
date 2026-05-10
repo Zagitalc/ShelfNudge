@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: shelf-nudge
+    runtime: node
+    plan: free
+    buildCommand: npm install --prefix server && npm install --prefix client && npm run build --prefix client
+    startCommand: npm start --prefix server
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
