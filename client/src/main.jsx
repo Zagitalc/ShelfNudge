@@ -19,7 +19,8 @@ import { getProducts, getPromotions, getSummary, getTrends } from './api.js';
 import { integer, money, percent } from './format.js';
 import './styles.css';
 
-const COLORS = ['#3445A4', '#5060C9', '#7A89EA', '#111111', '#8EA0FF', '#B8C4FF'];
+const PROMOTION_COLORS = ['#3445A4', '#5060C9', '#7A89EA', '#8EA0FF', '#B8C4FF'];
+const OTHER_PROMOTION_COLOR = '#C9CEDF';
 
 export function useDashboardData() {
   const [state, setState] = useState({
@@ -181,7 +182,13 @@ export function RetailerComparisonChart({ products }) {
 }
 
 export function PromotionInsightsChart({ promotions }) {
-  const data = promotions.byCategory.slice(0, 6);
+  const topCategories = promotions.byCategory.slice(0, 5);
+  const remainingCategories = promotions.byCategory.slice(5);
+  const otherTotal = remainingCategories.reduce((sum, item) => sum + item.value, 0);
+  const data = otherTotal > 0
+    ? [...topCategories, { name: 'Other', value: otherTotal }]
+    : topCategories;
+  const totalPromotions = promotions.byCategory.reduce((sum, item) => sum + item.value, 0);
   const hasData = data.length > 0;
 
   return (
@@ -198,10 +205,13 @@ export function PromotionInsightsChart({ promotions }) {
             <PieChart>
               <Pie data={data} dataKey="value" nameKey="name" innerRadius={58} outerRadius={96} paddingAngle={2}>
                 {data.map((entry, index) => (
-                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                  <Cell
+                    key={entry.name}
+                    fill={entry.name === 'Other' ? OTHER_PROMOTION_COLOR : PROMOTION_COLORS[index % PROMOTION_COLORS.length]}
+                  />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => integer(value)} />
+              <Tooltip content={<PromotionTooltip total={totalPromotions} />} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -210,6 +220,21 @@ export function PromotionInsightsChart({ promotions }) {
         )}
       </div>
     </article>
+  );
+}
+
+function PromotionTooltip({ active, payload, total }) {
+  if (!active || !payload?.length) return null;
+
+  const { name, value } = payload[0];
+  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+
+  return (
+    <div className="promotion-tooltip">
+      <p>{name}</p>
+      <span>{integer(value)} promotions</span>
+      <span>{percentage}% of all promoted products</span>
+    </div>
   );
 }
 

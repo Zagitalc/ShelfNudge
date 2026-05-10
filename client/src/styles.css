@@ -215,6 +215,28 @@ main {
   font-size: 0.9rem;
 }
 
+.promotion-tooltip {
+  min-width: 180px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.promotion-tooltip p {
+  margin: 0 0 6px;
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.promotion-tooltip span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
 .product-card {
   margin-top: 18px;
 }

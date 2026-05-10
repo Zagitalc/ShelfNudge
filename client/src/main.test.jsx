@@ -11,21 +11,51 @@ import {
 import * as api from './api.js';
 
 vi.mock('recharts', () => {
+  let latestPieData = [];
   const Chart = ({ children }) => <div data-testid="chart">{children}</div>;
   const Primitive = ({ children }) => <div>{children}</div>;
+  const Legend = () => (
+    <div data-testid="legend">
+      {latestPieData.map((item) => (
+        <span key={item.name}>{item.name}</span>
+      ))}
+    </div>
+  );
+  const Pie = ({ children, data }) => {
+    latestPieData = data || [];
+
+    return (
+      <div data-testid="pie" data-values={latestPieData.map((item) => item.value).join(',')}>
+        {children}
+      </div>
+    );
+  };
+  const Tooltip = ({ content }) => {
+    if (!content) return <div />;
+
+    return (
+      <div>
+        {latestPieData.map((item) => React.cloneElement(content, {
+          active: true,
+          payload: [item],
+          key: item.name,
+        }))}
+      </div>
+    );
+  };
 
   return {
     Bar: Primitive,
     BarChart: Chart,
     CartesianGrid: Primitive,
     Cell: Primitive,
-    Legend: Primitive,
+    Legend,
     Line: Primitive,
     LineChart: Chart,
-    Pie: Primitive,
+    Pie,
     PieChart: Chart,
     ResponsiveContainer: ({ children }) => <div>{children}</div>,
-    Tooltip: Primitive,
+    Tooltip,
     XAxis: Primitive,
     YAxis: Primitive,
   };
@@ -224,5 +254,47 @@ describe('Chart empty states', () => {
     render(<PromotionInsightsChart promotions={{ byCategory: [] }} />);
 
     expect(screen.getByText('No promotion insights are available.')).toBeInTheDocument();
+  });
+
+  it('shows promotion count and full-category percentage in the promotion tooltip', () => {
+    render(<PromotionInsightsChart promotions={{
+      byCategory: [
+        { name: 'Instant Coffee', value: 80 },
+        { name: 'Black Tea', value: 120 },
+        { name: 'Green Tea', value: 50 },
+        { name: 'Chai Tea', value: 30 },
+        { name: 'Fruit Tea', value: 20 },
+        { name: 'Decaf Tea', value: 15 },
+        { name: 'Loose Leaf', value: 10 },
+      ],
+    }} />);
+
+    expect(screen.getAllByText('Instant Coffee').length).toBeGreaterThan(0);
+    expect(screen.getByText('80 promotions')).toBeInTheDocument();
+    expect(screen.getByText('24.6% of all promoted products')).toBeInTheDocument();
+  });
+
+  it('aggregates categories outside the top five into an Other segment', () => {
+    render(<PromotionInsightsChart promotions={{
+      byCategory: [
+        { name: 'Ground Coffee', value: 74 },
+        { name: 'Instant Coffee', value: 72 },
+        { name: 'Black Tea', value: 71 },
+        { name: 'Green Tea', value: 70 },
+        { name: 'Chai Tea', value: 69 },
+        { name: 'Fruit Tea', value: 40 },
+        { name: 'Loose Leaf', value: 21 },
+      ],
+    }} />);
+
+    expect(within(screen.getByTestId('legend')).getByText('Other')).toBeInTheDocument();
+    expect(screen.getAllByText('Other').length).toBeGreaterThan(0);
+    expect(screen.getByText('61 promotions')).toBeInTheDocument();
+    expect(screen.getByText('14.6% of all promoted products')).toBeInTheDocument();
+
+    const visibleValues = screen.getByTestId('pie').dataset.values.split(',').map(Number);
+    const total = 417;
+    const visiblePercentageTotal = visibleValues.reduce((sum, value) => sum + ((value / total) * 100), 0);
+    expect(visiblePercentageTotal).toBeCloseTo(100, 5);
   });
 });
