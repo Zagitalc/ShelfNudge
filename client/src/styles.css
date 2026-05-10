@@ -191,6 +191,30 @@ main {
   padding: 16px 18px 22px;
 }
 
+.empty-state {
+  display: grid;
+  width: 100%;
+  min-height: 180px;
+  place-content: center;
+  gap: 6px;
+  padding: 28px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.empty-state span {
+  display: block;
+  max-width: 420px;
+  font-size: 0.9rem;
+}
+
 .product-card {
   margin-top: 18px;
 }

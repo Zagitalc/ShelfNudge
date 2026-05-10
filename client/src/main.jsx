@@ -103,6 +103,8 @@ export function KpiCards({ summary }) {
 }
 
 export function PricingTrendsChart({ trends }) {
+  const hasData = trends.length > 0;
+
   return (
     <article className="dashboard-card chart-card chart-card-wide">
       <div className="card-heading">
@@ -112,18 +114,22 @@ export function PricingTrendsChart({ trends }) {
         </div>
       </div>
       <div className="chart-frame">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={trends} margin={{ top: 12, right: 24, left: 0, bottom: 8 }}>
-            <CartesianGrid stroke="#E5E9F8" vertical={false} />
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={26} />
-            <YAxis tickFormatter={(value) => `£${value}`} tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(value) => money(value)} />
-            <Legend />
-            <Line type="monotone" dataKey="averageBasePrice" name="Base price" stroke="#111111" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="averageShelfPrice" name="Shelf price" stroke="#3445A4" strokeWidth={3} dot={false} />
-            <Line type="monotone" dataKey="averagePromotedPrice" name="Promoted price" stroke="#5060C9" strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trends} margin={{ top: 12, right: 24, left: 0, bottom: 8 }}>
+              <CartesianGrid stroke="#E5E9F8" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={26} />
+              <YAxis tickFormatter={(value) => `£${value}`} tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(value) => money(value)} />
+              <Legend />
+              <Line type="monotone" dataKey="averageBasePrice" name="Base price" stroke="#111111" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="averageShelfPrice" name="Shelf price" stroke="#3445A4" strokeWidth={3} dot={false} />
+              <Line type="monotone" dataKey="averagePromotedPrice" name="Promoted price" stroke="#5060C9" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyState title="No pricing trend data is available." />
+        )}
       </div>
     </article>
   );
@@ -145,6 +151,7 @@ export function RetailerComparisonChart({ products }) {
       }))
       .sort((a, b) => b.averageShelfPrice - a.averageShelfPrice);
   }, [products]);
+  const hasData = data.length > 0;
 
   return (
     <article className="dashboard-card chart-card">
@@ -155,15 +162,19 @@ export function RetailerComparisonChart({ products }) {
         </div>
       </div>
       <div className="chart-frame">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 12, right: 16, left: 0, bottom: 36 }}>
-            <CartesianGrid stroke="#E5E9F8" vertical={false} />
-            <XAxis dataKey="retailer" tick={{ fontSize: 11 }} angle={-20} textAnchor="end" interval={0} />
-            <YAxis tickFormatter={(value) => `£${value}`} tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(value) => money(value)} />
-            <Bar dataKey="averageShelfPrice" name="Average shelf price" fill="#3445A4" radius={[6, 6, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 12, right: 16, left: 0, bottom: 36 }}>
+              <CartesianGrid stroke="#E5E9F8" vertical={false} />
+              <XAxis dataKey="retailer" tick={{ fontSize: 11 }} angle={-20} textAnchor="end" interval={0} />
+              <YAxis tickFormatter={(value) => `£${value}`} tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(value) => money(value)} />
+              <Bar dataKey="averageShelfPrice" name="Average shelf price" fill="#3445A4" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyState title="No retailer comparison data is available." />
+        )}
       </div>
     </article>
   );
@@ -171,6 +182,7 @@ export function RetailerComparisonChart({ products }) {
 
 export function PromotionInsightsChart({ promotions }) {
   const data = promotions.byCategory.slice(0, 6);
+  const hasData = data.length > 0;
 
   return (
     <article className="dashboard-card chart-card">
@@ -181,19 +193,32 @@ export function PromotionInsightsChart({ promotions }) {
         </div>
       </div>
       <div className="chart-frame">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" innerRadius={58} outerRadius={96} paddingAngle={2}>
-              {data.map((entry, index) => (
-                <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value) => integer(value)} />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={data} dataKey="value" nameKey="name" innerRadius={58} outerRadius={96} paddingAngle={2}>
+                {data.map((entry, index) => (
+                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => integer(value)} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyState title="No promotion insights are available." />
+        )}
       </div>
     </article>
+  );
+}
+
+function EmptyState({ title, description }) {
+  return (
+    <div className="empty-state">
+      <p>{title}</p>
+      {description ? <span>{description}</span> : null}
+    </div>
   );
 }
 
@@ -207,16 +232,32 @@ export function ProductExplorer({ initialProducts, metadata }) {
   });
   const [sort, setSort] = useState({ key: 'title', direction: 'asc' });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     const handle = setTimeout(() => {
       setLoading(true);
+      setError('');
       getProducts(filters)
-        .then((response) => setProducts(response.data))
-        .finally(() => setLoading(false));
+        .then((response) => {
+          if (!cancelled) setProducts(response.data);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError('Unable to load product data.');
+            setProducts([]);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
     }, 180);
 
-    return () => clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
   }, [filters]);
 
   const sortedProducts = useMemo(() => {
@@ -292,45 +333,56 @@ export function ProductExplorer({ initialProducts, metadata }) {
       </div>
 
       <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <SortHeader column="title">Product title</SortHeader>
-              <SortHeader column="retailer">Retailer</SortHeader>
-              <SortHeader column="category">Category</SortHeader>
-              <SortHeader column="brand">Brand</SortHeader>
-              <SortHeader column="basePrice" alignRight>Base price</SortHeader>
-              <SortHeader column="shelfPrice" alignRight>Shelf price</SortHeader>
-              <SortHeader column="promotedPrice" alignRight>Promoted price</SortHeader>
-              <SortHeader column="onPromotion">On promotion</SortHeader>
-              <th>Promotion description</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedProducts.map((product, index) => (
-              <tr key={`${product.retailer}-${product.ean}-${index}`}>
-                <td>
-                  <div className="product-title">
-                    {product.image ? <img src={product.image} alt="" /> : <span className="image-fallback" />}
-                    <span>{product.title}</span>
-                  </div>
-                </td>
-                <td>{product.retailer}</td>
-                <td>{product.category}</td>
-                <td>{product.brand}</td>
-                <td className="align-right">{money(product.basePrice)}</td>
-                <td className="align-right">{money(product.shelfPrice)}</td>
-                <td className="align-right">{product.onPromotion ? money(product.promotedPrice) : '-'}</td>
-                <td>
-                  <span className={product.onPromotion ? 'status status-on' : 'status'}>
-                    {product.onPromotion ? 'Yes' : 'No'}
-                  </span>
-                </td>
-                <td>{product.promotionDescription || '-'}</td>
+        {loading ? (
+          <EmptyState title="Loading pricing insights..." />
+        ) : error ? (
+          <EmptyState title={error} />
+        ) : sortedProducts.length === 0 ? (
+          <EmptyState
+            title="No products match the current filters."
+            description="Try changing the retailer, category, or promotion filter."
+          />
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <SortHeader column="title">Product title</SortHeader>
+                <SortHeader column="retailer">Retailer</SortHeader>
+                <SortHeader column="category">Category</SortHeader>
+                <SortHeader column="brand">Brand</SortHeader>
+                <SortHeader column="basePrice" alignRight>Base price</SortHeader>
+                <SortHeader column="shelfPrice" alignRight>Shelf price</SortHeader>
+                <SortHeader column="promotedPrice" alignRight>Promoted price</SortHeader>
+                <SortHeader column="onPromotion">On promotion</SortHeader>
+                <th>Promotion description</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sortedProducts.map((product, index) => (
+                <tr key={`${product.retailer}-${product.ean}-${index}`}>
+                  <td>
+                    <div className="product-title">
+                      {product.image ? <img src={product.image} alt="" /> : <span className="image-fallback" />}
+                      <span>{product.title}</span>
+                    </div>
+                  </td>
+                  <td>{product.retailer}</td>
+                  <td>{product.category}</td>
+                  <td>{product.brand}</td>
+                  <td className="align-right">{money(product.basePrice)}</td>
+                  <td className="align-right">{money(product.shelfPrice)}</td>
+                  <td className="align-right">{product.onPromotion ? money(product.promotedPrice) : '-'}</td>
+                  <td>
+                    <span className={product.onPromotion ? 'status status-on' : 'status'}>
+                      {product.onPromotion ? 'Yes' : 'No'}
+                    </span>
+                  </td>
+                  <td>{product.promotionDescription || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </article>
   );
@@ -345,11 +397,11 @@ export function App() {
   }, []);
 
   if (dashboard.loading) {
-    return <main className="loading">Loading Shelf Nudge analytics...</main>;
+    return <main className="loading">Loading pricing insights...</main>;
   }
 
   if (dashboard.error) {
-    return <main className="loading">Unable to load dashboard: {dashboard.error}</main>;
+    return <main className="loading">Unable to load dashboard data.</main>;
   }
 
   return (

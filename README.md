@@ -78,12 +78,14 @@ Recharts was chosen because it integrates cleanly with React, provides accessibl
 
 The backend loads `server/data/Sample_Data.csv` at startup, converts price fields to numbers, converts promotion values to booleans, and exposes small analytics endpoints. The frontend fetches those endpoints and handles filtering, sorting, and responsive dashboard rendering.
 
+Frontend state is responsible for user-facing loading, error, and empty states. A successful API response with an empty array, such as a filter combination with no matching products, is treated as a valid empty result and renders guidance to change filters. Request failures, server errors, network errors, and invalid responses render a clear error message instead.
+
 ## Limitations
 
 - The CSV is loaded only at server startup.
 - Product rows are served from the latest snapshot rather than paginated historical data.
 - There is no authentication or role-based access.
-- Test coverage is focused on CSV analytics, API responses, API client helpers, formatting helpers, and core React async rendering/filtering flows.
+- Test coverage is focused on CSV analytics, API responses, API client helpers, formatting helpers, React async rendering/filtering flows, and frontend empty/error states.
 - The app is optimised for the supplied CSV shape.
 
 ## Future Improvements

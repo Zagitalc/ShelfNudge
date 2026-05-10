@@ -1,7 +1,13 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { App, ProductExplorer } from './main.jsx';
+import {
+  App,
+  PricingTrendsChart,
+  ProductExplorer,
+  PromotionInsightsChart,
+  RetailerComparisonChart,
+} from './main.jsx';
 import * as api from './api.js';
 
 vi.mock('recharts', () => {
@@ -29,8 +35,8 @@ vi.mock('./api.js');
 
 const metadata = {
   latestDate: '2022-02-07',
-  retailers: ['Sainsburys', 'Tesco'],
-  categories: ['Black Tea', 'Green Tea'],
+  retailers: ['Sainsburys', 'Tesco', 'Morrisons'],
+  categories: ['Black Tea', 'Green Tea', 'Chai Tea'],
 };
 
 const products = [
@@ -87,7 +93,7 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByText('Loading Shelf Nudge analytics...')).toBeInTheDocument();
+    expect(screen.getByText('Loading pricing insights...')).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Shelf Nudge', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('1,302')).toBeInTheDocument();
     expect(screen.getByText('20.4%')).toBeInTheDocument();
@@ -103,7 +109,8 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(await screen.findByText('Unable to load dashboard: offline')).toBeInTheDocument();
+    expect(await screen.findByText('Unable to load dashboard data.')).toBeInTheDocument();
+    expect(screen.queryByText('offline')).not.toBeInTheDocument();
   });
 });
 
@@ -143,5 +150,79 @@ describe('ProductExplorer', () => {
 
     const table = screen.getByRole('table');
     expect(within(table).getByText('Yorkshire Tea 160 Tea Bags 500g')).toBeInTheDocument();
+  });
+
+  it('shows an empty state when a successful product request returns no matches', async () => {
+    vi.useFakeTimers();
+    api.getProducts.mockResolvedValue({ data: [] });
+
+    render(<ProductExplorer initialProducts={products} metadata={metadata} />);
+
+    const [retailerSelect, categorySelect] = screen.getAllByDisplayValue('All');
+    fireEvent.change(retailerSelect, {
+      target: { value: 'Morrisons' },
+    });
+    fireEvent.change(categorySelect, {
+      target: { value: 'Chai Tea' },
+    });
+    fireEvent.click(screen.getByLabelText('Promotion only'));
+
+    await act(async () => {
+      vi.advanceTimersByTime(180);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('No products match the current filters.')).toBeInTheDocument();
+    expect(screen.getByText('Try changing the retailer, category, or promotion filter.')).toBeInTheDocument();
+    expect(screen.queryByText('Unable to load product data.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unable to load dashboard data.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('shows a product error state and clears rows when product loading fails', async () => {
+    vi.useFakeTimers();
+    api.getProducts.mockRejectedValue(new Error('offline'));
+
+    render(<ProductExplorer initialProducts={products} metadata={metadata} />);
+
+    expect(screen.getByText('Yorkshire Tea 160 Tea Bags 500g')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('Search product, brand, category or EAN'), {
+      target: { value: 'Yorkshire' },
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(180);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('Unable to load product data.')).toBeInTheDocument();
+    expect(screen.queryByText('Yorkshire Tea 160 Tea Bags 500g')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+});
+
+describe('Chart empty states', () => {
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('shows an empty state when pricing trends data is empty', () => {
+    render(<PricingTrendsChart trends={[]} />);
+
+    expect(screen.getByText('No pricing trend data is available.')).toBeInTheDocument();
+  });
+
+  it('shows an empty state when retailer comparison data is empty', () => {
+    render(<RetailerComparisonChart products={[]} />);
+
+    expect(screen.getByText('No retailer comparison data is available.')).toBeInTheDocument();
+  });
+
+  it('shows an empty state when promotion insight data is empty', () => {
+    render(<PromotionInsightsChart promotions={{ byCategory: [] }} />);
+
+    expect(screen.getByText('No promotion insights are available.')).toBeInTheDocument();
   });
 });
