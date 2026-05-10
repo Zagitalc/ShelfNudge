@@ -111,7 +111,7 @@ export function PricingTrendsChart({ trends }) {
       <div className="card-heading">
         <div>
           <h3>Pricing trends over time</h3>
-          <p>Average base, shelf, and promoted prices from the CSV history.</p>
+          <p>Average base, shelf, and promoted prices from pricing history.</p>
         </div>
       </div>
       <div className="chart-frame">
@@ -347,7 +347,7 @@ export function ProductExplorer({ initialProducts, metadata }) {
       <div className="card-heading product-heading">
         <div>
           <h3>Product explorer</h3>
-          <p>Detailed product pricing from the CSV latest shelf snapshot.</p>
+          <p>Detailed product pricing from the latest shelf snapshot.</p>
         </div>
         <strong>{loading ? 'Loading...' : `${integer(sortedProducts.length)} products`}</strong>
       </div>
