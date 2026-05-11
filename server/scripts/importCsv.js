@@ -8,6 +8,7 @@ const { Pool } = pg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CSV_PATH = path.resolve(__dirname, '../data/Sample_Data.csv');
+export const BATCH_SIZE = 1000;
 
 export const asNumber = (value) => {
   if (value === null || value === undefined || value === '') return null;
@@ -92,24 +93,21 @@ export const schemaSql = `
 
 export const resetSql = 'TRUNCATE products RESTART IDENTITY;';
 
-const insertSql = `
-  INSERT INTO products (
-    snapshot_date,
-    retailer,
-    ean,
-    category,
-    manufacturer,
-    brand,
-    title,
-    image,
-    on_promotion,
-    promotion_description,
-    base_price,
-    shelf_price,
-    promoted_price
-  )
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-`;
+const insertColumns = [
+  'snapshot_date',
+  'retailer',
+  'ean',
+  'category',
+  'manufacturer',
+  'brand',
+  'title',
+  'image',
+  'on_promotion',
+  'promotion_description',
+  'base_price',
+  'shelf_price',
+  'promoted_price',
+];
 
 const valuesFor = (row) => [
   row.snapshotDate,
@@ -127,6 +125,34 @@ const valuesFor = (row) => [
   row.promotedPrice,
 ];
 
+const chunkRows = (rows, size = BATCH_SIZE) => {
+  const chunks = [];
+
+  for (let index = 0; index < rows.length; index += size) {
+    chunks.push(rows.slice(index, index + size));
+  }
+
+  return chunks;
+};
+
+export const buildInsertQuery = (rows) => {
+  const values = rows.flatMap(valuesFor);
+  const columnCount = insertColumns.length;
+  const placeholders = rows.map((row, rowIndex) => {
+    const offset = rowIndex * columnCount;
+    const rowPlaceholders = insertColumns.map((column, columnIndex) => `$${offset + columnIndex + 1}`);
+    return `(${rowPlaceholders.join(', ')})`;
+  });
+
+  return {
+    text: `
+      INSERT INTO products (${insertColumns.join(', ')})
+      VALUES ${placeholders.join(',\n        ')}
+    `,
+    values,
+  };
+};
+
 export const importRows = async (client, rows) => {
   await client.query(schemaSql);
   await client.query('BEGIN');
@@ -134,8 +160,9 @@ export const importRows = async (client, rows) => {
   try {
     await client.query(resetSql);
 
-    for (const row of rows) {
-      await client.query(insertSql, valuesFor(row));
+    for (const chunk of chunkRows(rows)) {
+      const insertQuery = buildInsertQuery(chunk);
+      await client.query(insertQuery.text, insertQuery.values);
     }
 
     await client.query('COMMIT');
