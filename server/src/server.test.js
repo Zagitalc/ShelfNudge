@@ -1,8 +1,58 @@
 import request from 'supertest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { app } from './server.js';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+vi.mock('./postgresAnalytics.js', () => ({
+  filterPostgresProducts: vi.fn(async () => ([{
+    date: '2022-02-07',
+    retailer: 'Sainsburys',
+    ean: '12345',
+    category: 'Black Tea',
+    manufacturer: 'Tea Co',
+    brand: 'Yorkshire Tea',
+    title: 'Yorkshire Tea 80 Bags',
+    image: null,
+    onPromotion: true,
+    promotionDescription: 'Save 50p',
+    basePrice: 3,
+    shelfPrice: 2.5,
+    promotedPrice: 2.5,
+  }])),
+  getPostgresMetadata: vi.fn(async () => ({
+    source: 'postgres',
+    productCount: 14268,
+    loadedRows: 14268,
+    latestDate: '2022-02-07',
+    retailers: ['Sainsburys'],
+    categories: ['Black Tea'],
+    brands: ['Yorkshire Tea'],
+  })),
+  getPostgresPromotions: vi.fn(async () => ({
+    byRetailer: [{ name: 'Sainsburys', value: 12 }],
+    byCategory: [{ name: 'Black Tea', value: 12 }],
+  })),
+  getPostgresSummary: vi.fn(async () => ({
+    totalProducts: 1302,
+    totalRetailers: 5,
+    totalBrands: 128,
+    productsOnPromotion: 416,
+    promotionPercentage: 0.2042,
+    averageShelfPrice: 4.47,
+    averagePromotedPrice: 3.34,
+    biggestDiscount: 0.5,
+    topPromotionalBrand: 'Tetley',
+    topPromotionalBrandCount: 51,
+  })),
+  getPostgresTrends: vi.fn(async () => ([{
+    date: '2022-02-07',
+    averageBasePrice: 4.52,
+    averageShelfPrice: 4.47,
+    averagePromotedPrice: 3.34,
+  }])),
+}));
+
+const { app, startServer } = await import('./server.js');
 
 describe('Shelf Nudge API', () => {
   const clientDistPath = path.resolve(process.cwd(), '../client/dist');
@@ -30,18 +80,37 @@ describe('Shelf Nudge API', () => {
     fs.writeFileSync(clientIndexPath, originalIndexHtml);
   });
 
-  it('returns health metadata', async () => {
+  it('returns PostgreSQL health metadata without exposing credentials', async () => {
     const response = await request(app).get('/api/health').expect(200);
 
     expect(response.body).toMatchObject({
       ok: true,
+      source: 'postgres',
+      productCount: 14268,
       loadedRows: 14268,
       latestDate: '2022-02-07',
     });
     expect(response.body.retailers).toContain('Sainsburys');
+    expect(JSON.stringify(response.body)).not.toContain('DATABASE_URL');
+    expect(JSON.stringify(response.body)).not.toContain('postgres://');
+    expect(JSON.stringify(response.body)).not.toContain('postgresql://');
   });
 
-  it('returns filtered product rows from the latest snapshot', async () => {
+  it('requires DATABASE_URL before starting the server', () => {
+    const originalDatabaseUrl = process.env.DATABASE_URL;
+    delete process.env.DATABASE_URL;
+
+    expect(() => startServer(0)).toThrow('DATABASE_URL is required');
+
+    if (originalDatabaseUrl === undefined) {
+      delete process.env.DATABASE_URL;
+      return;
+    }
+
+    process.env.DATABASE_URL = originalDatabaseUrl;
+  });
+
+  it('returns filtered product rows from PostgreSQL', async () => {
     const response = await request(app)
       .get('/api/products')
       .query({
@@ -52,11 +121,13 @@ describe('Shelf Nudge API', () => {
       })
       .expect(200);
 
-    expect(response.body.metadata.latestDate).toBe('2022-02-07');
-    expect(response.body.data.length).toBeGreaterThan(0);
-    expect(response.body.data.every((product) => product.retailer === 'Sainsburys')).toBe(true);
-    expect(response.body.data.every((product) => product.category === 'Black Tea')).toBe(true);
-    expect(response.body.data.every((product) => product.onPromotion)).toBe(true);
+    expect(response.body.metadata.source).toBe('postgres');
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0]).toMatchObject({
+      retailer: 'Sainsburys',
+      category: 'Black Tea',
+      onPromotion: true,
+    });
   });
 
   it('returns dashboard datasets asynchronously', async () => {
@@ -67,8 +138,9 @@ describe('Shelf Nudge API', () => {
     ]);
 
     expect(summary.body.data.totalProducts).toBe(1302);
-    expect(trends.body.data).toHaveLength(7);
-    expect(promotions.body.data.byRetailer[0]).toMatchObject({ name: 'Ocado', value: 171 });
+    expect(summary.body.metadata.source).toBe('postgres');
+    expect(trends.body.data).toHaveLength(1);
+    expect(promotions.body.data.byRetailer[0]).toMatchObject({ name: 'Sainsburys', value: 12 });
   });
 
   it('returns JSON 404 responses for unknown API routes', async () => {
