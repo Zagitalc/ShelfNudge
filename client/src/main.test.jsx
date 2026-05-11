@@ -205,7 +205,8 @@ describe('ProductExplorer', () => {
 
     render(<ProductExplorer initialProducts={products} metadata={metadata} />);
 
-    const [retailerSelect, categorySelect] = screen.getAllByDisplayValue('All');
+    const retailerSelect = screen.getByDisplayValue('All retailers');
+    const categorySelect = screen.getByDisplayValue('All categories');
     fireEvent.change(retailerSelect, {
       target: { value: 'Morrisons' },
     });

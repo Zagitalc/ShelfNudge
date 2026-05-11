@@ -360,11 +360,11 @@ export function ProductExplorer({ initialProducts, metadata }) {
           onChange={(event) => setFilter('search', event.target.value)}
         />
         <select value={filters.retailer} onChange={(event) => setFilter('retailer', event.target.value)}>
-          <option>All</option>
+          <option value="All">All retailers</option>
           {metadata.retailers.map((retailer) => <option key={retailer}>{retailer}</option>)}
         </select>
         <select value={filters.category} onChange={(event) => setFilter('category', event.target.value)}>
-          <option>All</option>
+          <option value="All">All categories</option>
           {metadata.categories.map((category) => <option key={category}>{category}</option>)}
         </select>
         <label className="toggle">
