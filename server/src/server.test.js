@@ -35,10 +35,14 @@ describe('Shelf Nudge API', () => {
 
     expect(response.body).toMatchObject({
       ok: true,
+      source: 'csv',
+      productCount: 14268,
       loadedRows: 14268,
       latestDate: '2022-02-07',
     });
     expect(response.body.retailers).toContain('Sainsburys');
+    expect(JSON.stringify(response.body)).not.toContain('DATABASE_URL');
+    expect(JSON.stringify(response.body)).not.toContain('postgres://');
   });
 
   it('returns filtered product rows from the latest snapshot', async () => {
