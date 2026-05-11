@@ -3,9 +3,7 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { filterProducts, getPromotions, getSummary, getTrends } from './analytics.js';
-import { hasDatabaseUrl } from './db.js';
-import { metadata } from './dataStore.js';
+import { requireDatabaseUrl } from './db.js';
 import {
   filterPostgresProducts,
   getPostgresMetadata,
@@ -23,14 +21,6 @@ const clientIndexPath = path.join(clientDistPath, 'index.html');
 export const app = express();
 
 app.use(cors());
-
-const csvMetadata = {
-  source: 'csv',
-  productCount: metadata.loadedRows,
-  ...metadata,
-};
-
-const getMetadata = async () => (hasDatabaseUrl() ? getPostgresMetadata() : csvMetadata);
 
 const handleAsync = (handler) => async (req, res, next) => {
   try {
@@ -101,14 +91,14 @@ const sendApiIndex = (req, res) => {
 app.get('/api', sendApiIndex);
 
 app.get('/api/health', handleAsync(async (req, res) => {
-  const currentMetadata = await getMetadata();
+  const currentMetadata = await getPostgresMetadata();
   res.json({ ok: true, ...currentMetadata });
 }));
 
 app.get('/api/products', handleAsync(async (req, res) => {
   const [data, currentMetadata] = await Promise.all([
-    hasDatabaseUrl() ? filterPostgresProducts(req.query) : filterProducts(req.query),
-    getMetadata(),
+    filterPostgresProducts(req.query),
+    getPostgresMetadata(),
   ]);
 
   res.json({
@@ -119,8 +109,8 @@ app.get('/api/products', handleAsync(async (req, res) => {
 
 app.get('/api/summary', handleAsync(async (req, res) => {
   const [data, currentMetadata] = await Promise.all([
-    hasDatabaseUrl() ? getPostgresSummary() : getSummary(),
-    getMetadata(),
+    getPostgresSummary(),
+    getPostgresMetadata(),
   ]);
 
   res.json({
@@ -131,8 +121,8 @@ app.get('/api/summary', handleAsync(async (req, res) => {
 
 app.get('/api/trends', handleAsync(async (req, res) => {
   const [data, currentMetadata] = await Promise.all([
-    hasDatabaseUrl() ? getPostgresTrends() : getTrends(),
-    getMetadata(),
+    getPostgresTrends(),
+    getPostgresMetadata(),
   ]);
 
   res.json({
@@ -143,8 +133,8 @@ app.get('/api/trends', handleAsync(async (req, res) => {
 
 app.get('/api/promotions', handleAsync(async (req, res) => {
   const [data, currentMetadata] = await Promise.all([
-    hasDatabaseUrl() ? getPostgresPromotions() : getPromotions(),
-    getMetadata(),
+    getPostgresPromotions(),
+    getPostgresMetadata(),
   ]);
 
   res.json({
@@ -179,14 +169,11 @@ app.use((error, req, res, next) => {
 });
 
 export const startServer = (port = PORT) => {
+  requireDatabaseUrl();
+
   const server = app.listen(port, () => {
     console.log(`Shelf Nudge API running on http://localhost:${port}`);
-    if (hasDatabaseUrl()) {
-      console.log('Using PostgreSQL data source.');
-      return;
-    }
-
-    console.log(`Loaded ${metadata.loadedRows} CSV rows. Latest snapshot: ${metadata.latestDate}`);
+    console.log('Using PostgreSQL data source.');
   });
 
   server.on('error', async (error) => {
@@ -199,7 +186,7 @@ export const startServer = (port = PORT) => {
       const response = await fetch(`http://localhost:${port}/api/health`);
       const health = await response.json();
 
-      if (health.ok && health.loadedRows) {
+      if (health.ok && health.source === 'postgres') {
         console.log(`Shelf Nudge API is already running on http://localhost:${port}`);
         console.log('Reusing the existing backend process for this npm start session.');
         setInterval(() => {}, 60 * 60 * 1000);
