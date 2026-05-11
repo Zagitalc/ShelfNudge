@@ -4,7 +4,6 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install --prefix server && npm install --prefix client && npm run build --prefix client
-    preDeployCommand: npm run db:import --prefix server
     startCommand: npm start --prefix server
     envVars:
       - key: NODE_VERSION
