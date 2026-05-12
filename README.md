@@ -87,11 +87,21 @@ The Express server runs on port `4000`.
 - `GET /api/promotions` returns promotion counts grouped by retailer and category.
 - `GET /api/health` returns server status and reports `source: "postgres"`. It does not expose database credentials.
 
+## Exercise Requirements Covered
+
+The supplied exercise brief asks for a backend service, a React-based single page application, useful data visualisation, and a detailed data table. This implementation covers those requirements with:
+
+- A Node.js + Express backend exposing API endpoints for products, summary metrics, pricing trends, promotion groups, and health checks.
+- A React + Vite single page dashboard that consumes the backend APIs.
+- Recharts visualisations for pricing trends over time, retailer average shelf price comparison, and promoted category distribution.
+- A Product Explorer table with search, retailer/category filters, promotion-only filtering, sortable columns, and frontend pagination.
+- PostgreSQL-backed runtime data, seeded from the supplied `server/data/Sample_Data.csv` file by `npm run db:import --prefix server`.
+
 ## Technical Decisions
 
-JavaScript was chosen because the task specifies JavaScript rather than TypeScript, and it keeps the code easy to review in an interview setting.
+JavaScript was chosen to keep the implementation simple, readable, and easy to review in an interview setting.
 
-The first version used CSV parsing because the supplied dataset is local and fixed-size. PostgreSQL support was then added to demonstrate a more production-like retail analytics structure with SQL aggregation, indexing, and explicit database configuration.
+The supplied CSV is imported into PostgreSQL before runtime. The API queries PostgreSQL rather than parsing the CSV on each request, which gives the backend a more production-like structure with SQL aggregation, indexing, and explicit database configuration.
 
 PostgreSQL queries use parameterized values for filters and `ILIKE` search across title, brand, category, and EAN. Sort columns are whitelisted before being used in `ORDER BY`, because SQL identifiers cannot be parameterized safely.
 
